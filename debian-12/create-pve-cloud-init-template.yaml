@@ -1,0 +1,52 @@
+---
+- name: Create Debian Cloud-Init Template on Proxmox VE
+  hosts: "{{ host_group_var }}"
+  become: true
+  vars:
+    checksum_dest: "/var/lib/vz/template/cache/checksums/SHA512SUMS"
+  tasks:
+    ##################################
+    # Download and File Verification #
+    ##################################
+    
+    - name: Create required directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0644'
+      loop:
+        - /var/lib/vz/template/cache/checksums
+
+    - name: Download Debian SHA512 checksums
+      ansible.builtin.get_url:
+        url: https://cdimage.debian.org/images/cloud/bookworm/latest/SHA512SUMS
+        dest: "{{ checksum_dest }}"
+        mode: '0644'
+
+    - name: Extract the specific image SHA512 checksum
+      ansible.builtin.shell: "grep debian-12-generic-amd64.qcow2 {{ checksum_dest }} | awk '{print $1}'"
+      register: extracted_checksum
+      changed_when: false
+
+    - name: Ensure checksum was extracted
+      ansible.builtin.fail:
+        msg: "Failed to extract SHA512 checksum for the Debian image."
+      when: extracted_checksum.stdout == ""
+
+    - name: Download Debian Generic Cloud AMD64 Image with checksum verification
+      ansible.builtin.get_url:
+        url: https://cdimage.debian.org/images/cloud/bookworm/latest/debian-12-generic-amd64.qcow2
+        dest: /var/lib/vz/template/cache/debian-12-generic-amd64.qcow2
+        checksum: "sha512:{{ extracted_checksum.stdout }}"
+        mode: '0644'
+        validate_certs: yes
+
+    - name: Ensure the image was downloaded and verified
+      ansible.builtin.stat:
+        path: /var/lib/vz/template/cache/debian-12-generic-amd64.qcow2
+      register: image_stat
+
+    - name: Fail if image download failed verification
+      ansible.builtin.fail:
+        msg: "The Debian image was not downloaded correctly or checksum verification failed."
+      when: not image_stat.stat.exists
