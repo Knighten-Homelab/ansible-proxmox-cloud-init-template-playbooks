@@ -4,6 +4,7 @@
   become: true
   vars:
     checksum_dest: "/var/lib/vz/template/cache/checksums/SHA512SUMS"
+    public_key: ""
   tasks:
     ##################################
     # Download and File Verification #
@@ -64,18 +65,26 @@
         --scsihw virtio-scsi-pci \
         --ide2 local-zfs:cloudinit \
         --ciuser ansible \
-        --sshkey /root/.ssh/id_rsa.pub \
+        --sshkey <(echo "{{ public_key }}") \
         --nameserver "192.168.25.100 192.168.25.101" \
         --ipconfig0 ip=dhcp
+      args:
+        executable: /bin/bash
       
     - name: Import qcoqw2 image to Disk
       ansible.builtin.shell: |
         qm importdisk 150 /var/lib/vz/template/cache/debian-12-generic-amd64.qcow2 local-zfs
+      args:
+        executable: /bin/bash
 
     - name: Attach disk to VM and set boot order
       ansible.builtin.shell: |
         qm set 150 --scsi0 local-zfs:vm-150-disk-0 --boot c --bootdisk scsi0
+      args:
+        executable: /bin/bash
 
     - name: Convert VM to template
       ansible.builtin.shell: |
         qm template 150
+      args:
+        executable: /bin/bash
