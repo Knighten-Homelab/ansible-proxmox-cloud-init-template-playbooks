@@ -8,7 +8,7 @@
     ##################################
     # Download and File Verification #
     ##################################
-    
+
     - name: Create required directories
       ansible.builtin.file:
         path: "{{ item }}"
@@ -50,3 +50,32 @@
       ansible.builtin.fail:
         msg: "The Debian image was not downloaded correctly or checksum verification failed."
       when: not image_stat.stat.exists
+
+    ###############
+    # VM Creation #
+    ###############
+
+    - name: Create minimal VM using qm
+      ansible.builtin.shell: |
+        qm create 150 \
+        --name debian-12-cloud-init-template \
+        --memory 2048 \
+        --net0 virtio,bridge=vmbr0 \
+        --scsihw virtio-scsi-pci \
+        --ide2 local-zfs:cloudinit \
+        --ciuser ansible \
+        --sshkey /root/.ssh/id_rsa.pub \
+        --nameserver "192.168.25.100 192.168.25.101" \
+        --ipconfig0 ip=dhcp
+      
+    - name: Import qcoqw2 image to Disk
+      ansible.builtin.shell: |
+        qm importdisk 150 /var/lib/vz/template/cache/debian-12-generic-amd64.qcow2 local-zfs
+
+    - name: Attach disk to VM and set boot order
+      ansible.builtin.shell: |
+        qm set 150 --scsi0 local-zfs:vm-150-disk-0 --boot c --bootdisk scsi0
+
+    - name: Convert VM to template
+      ansible.builtin.shell: |
+        qm template 150
