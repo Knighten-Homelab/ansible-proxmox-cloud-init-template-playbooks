@@ -1,10 +1,19 @@
 ---
-- name: Create Debian Cloud-Init Template on Proxmox VE
+- name: Create Debian Cloud-Init Template on Proxmox VE (Defaults to Debian 12 Generic AMD64)
   hosts: "{{ host_group_var }}"
   become: true
   vars:
+    host_group_var: "default"
     checksum_dest: "/var/lib/vz/template/cache/checksums/SHA512SUMS"
+    checksum_url: "https://cdimage.debian.org/images/cloud/bookworm/latest/SHA512SUMS"
+    image_name: "debian-12-generic-amd64.qcow2"
+    image_dest: "/var/lib/vz/template/cache/{{ image_name }}"
+    image_url: "https://cdimage.debian.org/images/cloud/bookworm/latest/{{ image_name }}"
+    template_storage: "local-zfs"
+    template_cloud_init_storage: "local-zfs"
+    template_name: "debian-12-cloud-init-template"
     public_key: ""
+    template_id: 999
   tasks:
     ##################################
     # Download and File Verification #
@@ -20,14 +29,15 @@
 
     - name: Download Debian SHA512 checksums
       ansible.builtin.get_url:
-        url: https://cdimage.debian.org/images/cloud/bookworm/latest/SHA512SUMS
+        url: "{{ checksum_url }}"
         dest: "{{ checksum_dest }}"
         mode: '0644'
 
     - name: Extract the specific image SHA512 checksum
-      ansible.builtin.shell: "grep debian-12-generic-amd64.qcow2 {{ checksum_dest }} | awk '{print $1}'"
+      ansible.builtin.shell: "grep {{ image_name }} {{ checksum_dest }} | awk '{print $1}'"
       register: extracted_checksum
       changed_when: false
+
 
     - name: Ensure checksum was extracted
       ansible.builtin.fail:
@@ -36,15 +46,15 @@
 
     - name: Download Debian Generic Cloud AMD64 Image with checksum verification
       ansible.builtin.get_url:
-        url: https://cdimage.debian.org/images/cloud/bookworm/latest/debian-12-generic-amd64.qcow2
-        dest: /var/lib/vz/template/cache/debian-12-generic-amd64.qcow2
+        url: "{{ image_url }}"
+        dest: "{{ image_dest }}"
         checksum: "sha512:{{ extracted_checksum.stdout }}"
         mode: '0644'
-        validate_certs: yes
+        validate_certs: true
 
     - name: Ensure the image was downloaded and verified
       ansible.builtin.stat:
-        path: /var/lib/vz/template/cache/debian-12-generic-amd64.qcow2
+        path: "{{ image_dest }}"
       register: image_stat
 
     - name: Fail if image download failed verification
@@ -52,56 +62,56 @@
         msg: "The Debian image was not downloaded correctly or checksum verification failed."
       when: not image_stat.stat.exists
 
-
     ################
     # Modify Image #
     ################
 
     - name: Install libguestfs-tools
-      apt:
+      ansible.builtin.apt:
         name: libguestfs-tools
         state: present
-        update_cache: yes
-    
+        update_cache: true
+
     - name: Install additional packages into the qcow2 image
-      command: |
+      ansible.builtin.command: |
         virt-customize \
-          -a /var/lib/vz/template/cache/debian-12-generic-amd64.qcow2 \
+          -a {{ image_dest }} \
           --install qemu-guest-agent,net-tools
-      
+
     ###############
     # VM Creation #
     ###############
 
     - name: Create minimal VM using qm
       ansible.builtin.shell: |
-        qm create 150 \
-        --name debian-12-cloud-init-template \
+        qm create {{ template_id }} \
+        --name {{ template_name }} \
         --memory 2048 \
         --net0 virtio,bridge=vmbr0 \
         --scsihw virtio-scsi-pci \
-        --ide2 local-zfs:cloudinit \
+        --ide2 {{ template_cloud_init_storage }}:cloudinit \
+        --agent 1 \
         --ciuser ansible \
         --sshkey <(echo "{{ public_key }}") \
         --nameserver "192.168.25.100 192.168.25.101" \
         --ipconfig0 ip=dhcp
       args:
         executable: /bin/bash
-      
+
     - name: Import qcoqw2 image to Disk
       ansible.builtin.shell: |
-        qm importdisk 150 /var/lib/vz/template/cache/debian-12-generic-amd64.qcow2 local-zfs
+        qm importdisk {{ template_id }} {{ image_dest }} {{ template_storage }}
       args:
         executable: /bin/bash
 
     - name: Attach disk to VM and set boot order
       ansible.builtin.shell: |
-        qm set 150 --scsi0 local-zfs:vm-150-disk-0 --boot c --bootdisk scsi0
+        qm set {{ template_id }} --scsi0 {{ template_storage }}:vm-{{ template_id }}-disk-0 --boot c --bootdisk scsi0
       args:
         executable: /bin/bash
 
     - name: Convert VM to template
       ansible.builtin.shell: |
-        qm template 150
+        qm template {{ template_id }}
       args:
         executable: /bin/bash
