@@ -52,6 +52,23 @@
         msg: "The Debian image was not downloaded correctly or checksum verification failed."
       when: not image_stat.stat.exists
 
+
+    ################
+    # Modify Image #
+    ################
+
+    - name: Install libguestfs-tools
+      apt:
+        name: libguestfs-tools
+        state: present
+        update_cache: yes
+    
+    - name: Install additional packages into the qcow2 image
+      command: |
+        virt-customize \
+          -a /var/lib/vz/template/cache/debian-12-generic-amd64.qcow2 \
+          --install qemu-guest-agent,net-tools
+      
     ###############
     # VM Creation #
     ###############
