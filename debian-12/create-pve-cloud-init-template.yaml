@@ -80,6 +80,7 @@
         url: "{{ checksum_url }}"
         dest: "{{ checksum_dest }}"
         mode: "0644"
+        validate_certs: true
 
     - name: Extract the specific image SHA512 checksum
       ansible.builtin.shell: "grep {{ image_name }} {{ checksum_dest }} | awk '{print $1}'"
