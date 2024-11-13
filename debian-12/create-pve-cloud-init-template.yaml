@@ -14,7 +14,55 @@
     template_name: "debian-12-cloud-init-template"
     public_key: ""
     template_id: 999
+    overwrite_existing_template: false
   tasks:
+    ####################################
+    # Pre-Tasks: Handle VMID Conflicts #
+    ####################################
+
+    - name: Check if VMID {{ template_id }} already exists
+      ansible.builtin.shell: |
+        qm status {{ template_id }}
+      register: vmid_check
+      ignore_errors: true
+
+    - name: Set fact if VMID exists
+      ansible.builtin.set_fact:
+        vm_exists: "{{ vmid_check.rc == 0 }}"
+
+    - name: Fail if VMID is already in use and overwrite flag is false
+      ansible.builtin.fail:
+        msg: "VMID {{ template_id }} is already in use and overwrite_existing_template is set to false."
+      when:
+        - vm_exists
+        - not overwrite_existing_template
+
+    - name: Delete existing VM/template if VMID is already in use and overwrite flag is true
+      ansible.builtin.command:
+        cmd: qm destroy {{ template_id }} --purge
+      when:
+        - vm_exists
+        - overwrite_existing_template
+      register: delete_existing_vm
+      ignore_errors: true
+
+    - name: Verify deletion of existing VM/template
+      ansible.builtin.shell: |
+        qm status {{ template_id }}
+      register: vmid_post_delete
+      when:
+        - vm_exists
+        - overwrite_existing_template
+      ignore_errors: true
+
+    - name: Fail if existing VM/template was not deleted
+      ansible.builtin.fail:
+        msg: "Failed to delete existing VM/template with VMID {{ template_id }}."
+      when:
+        - vm_exists
+        - overwrite_existing_template
+        - vmid_post_delete.rc == 0
+
     ##################################
     # Download and File Verification #
     ##################################
@@ -23,7 +71,7 @@
       ansible.builtin.file:
         path: "{{ item }}"
         state: directory
-        mode: '0644'
+        mode: "0644"
       loop:
         - /var/lib/vz/template/cache/checksums
 
@@ -31,13 +79,12 @@
       ansible.builtin.get_url:
         url: "{{ checksum_url }}"
         dest: "{{ checksum_dest }}"
-        mode: '0644'
+        mode: "0644"
 
     - name: Extract the specific image SHA512 checksum
       ansible.builtin.shell: "grep {{ image_name }} {{ checksum_dest }} | awk '{print $1}'"
       register: extracted_checksum
       changed_when: false
-
 
     - name: Ensure checksum was extracted
       ansible.builtin.fail:
@@ -49,7 +96,7 @@
         url: "{{ image_url }}"
         dest: "{{ image_dest }}"
         checksum: "sha512:{{ extracted_checksum.stdout }}"
-        mode: '0644'
+        mode: "0644"
         validate_certs: true
 
     - name: Ensure the image was downloaded and verified
