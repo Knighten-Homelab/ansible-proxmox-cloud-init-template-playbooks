@@ -39,7 +39,7 @@
 
     - name: Delete existing VM/template if VMID is already in use and overwrite flag is true
       ansible.builtin.command:
-        cmd: qm destroy {{ template_id }} --purge
+        cmd: qm destroy {{ template_id }} -purge -destroy-unreferenced-disks 1
       when:
         - vm_exists
         - overwrite_existing_template
@@ -135,36 +135,68 @@
     # VM Creation #
     ###############
 
-    - name: Create minimal VM using qm
-      ansible.builtin.shell: |
-        qm create {{ template_id }} \
-        --name {{ template_name }} \
-        --memory 2048 \
-        --net0 virtio,bridge=vmbr0 \
-        --scsihw virtio-scsi-pci \
-        --ide2 {{ template_cloud_init_storage }}:cloudinit \
-        --agent 1 \
-        --ciuser ansible \
-        --sshkey <(echo "{{ public_key }}") \
-        --nameserver "192.168.25.100 192.168.25.101" \
-        --ipconfig0 ip=dhcp
-      args:
-        executable: /bin/bash
+    - name: Create Proxmox VM with Cloud-Init and Additional Packages
+      block:
+        - name: Create minimal VM using qm
+          ansible.builtin.shell: |
+            qm create {{ template_id }} \
+            --name {{ template_name }} \
+            --memory 2048 \
+            --net0 virtio,bridge=vmbr0 \
+            --scsihw virtio-scsi-pci \
+            --ide2 {{ template_cloud_init_storage }}:cloudinit \
+            --agent 1 \
+            --ciuser ansible \
+            --sshkey <(echo "{{ public_key }}") \
+            --nameserver "192.168.25.100 192.168.25.101" \
+            --ipconfig0 ip=dhcp
+          args:
+            executable: /bin/bash
+          register: qm_create_result
+          ignore_errors: false
 
-    - name: Import qcoqw2 image to Disk
-      ansible.builtin.shell: |
-        qm importdisk {{ template_id }} {{ image_dest }} {{ template_storage }}
-      args:
-        executable: /bin/bash
+        - name: Import qcoqw2 image to Disk
+          ansible.builtin.shell: |
+            qm importdisk {{ template_id }} {{ image_dest }} {{ template_storage }}
+          args:
+            executable: /bin/bash
+          register: qm_importdisk_result
+          ignore_errors: false
 
-    - name: Attach disk to VM and set boot order
-      ansible.builtin.shell: |
-        qm set {{ template_id }} --scsi0 {{ template_storage }}:vm-{{ template_id }}-disk-0 --boot c --bootdisk scsi0
-      args:
-        executable: /bin/bash
+        - name: Attach disk to VM and set boot order
+          ansible.builtin.shell: |
+            qm set {{ template_id }} --scsi0 {{ template_storage }}:vm-{{ template_id }}-disk-0 --boot c --bootdisk scsi0
+          args:
+            executable: /bin/bash
+          register: qm_attach_image_result
+          ignore_errors: false
 
-    - name: Convert VM to template
-      ansible.builtin.shell: |
-        qm template {{ template_id }}
-      args:
-        executable: /bin/bash
+        - name: Convert VM to template
+          ansible.builtin.shell: |
+            qm template {{ template_id }}
+          args:
+            executable: /bin/bash
+          register: qm_template_result
+          ignore_errors: false
+
+        - name: Remove the QCOW2 image after template creation
+          ansible.builtin.file:
+            path: "{{ image_dest }}"
+            state: absent
+          when: qm_template_result.rc == 0
+
+      rescue:
+        - name: Cleanup - Delete VM if any step in the block fails
+          ansible.builtin.command:
+            cmd: qm destroy {{ template_id }} -purge -destroy-unreferenced-disks 1
+          ignore_errors: true
+
+        - name: Cleanup - Remove partially created QCOW2 image if exists
+          ansible.builtin.file:
+            path: "{{ image_dest }}"
+            state: absent
+          ignore_errors: true
+
+        - name: Fail the playbook after cleanup
+          ansible.builtin.fail:
+            msg: "An error occurred during VM creation. Cleanup has been performed."
