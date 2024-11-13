@@ -121,10 +121,15 @@
         update_cache: true
 
     - name: Install additional packages into the qcow2 image
-      ansible.builtin.command: |
-        virt-customize \
-          -a {{ image_dest }} \
-          --install qemu-guest-agent,net-tools
+      ansible.builtin.command:
+        cmd: virt-customize -a {{ image_dest }} --install qemu-guest-agent,net-tools
+      register: virt_customize_result
+      ignore_errors: false
+
+    - name: Fail if virt-customize failed
+      ansible.builtin.fail:
+        msg: "Failed to install additional packages into the qcow2 image. Error: {{ virt_customize_result.stderr }}"
+      when: virt_customize_result.rc != 0
 
     ###############
     # VM Creation #
