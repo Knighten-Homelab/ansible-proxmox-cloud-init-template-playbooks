@@ -1,0 +1,13 @@
+{
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Johnny-Knighten/ansible-homelab-proxmox-cloud-init-templates-playbooks"
+  },
+  "devDependencies": {
+    "husky": "^9.1.6"
+  },
+  "scripts": {
+    "prepare": "husky",
+    "pre-commit-gha": ""
+  }
+}
