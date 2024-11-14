@@ -1,0 +1,202 @@
+---
+- name: Create Debian Cloud-Init Template on Proxmox VE (Defaults to Debian 12 Generic AMD64)
+  hosts: "{{ host_group_var }}"
+  become: true
+  vars:
+    host_group_var: "default"
+    checksum_dest: "/var/lib/vz/template/cache/checksums/SHA512SUMS"
+    checksum_url: "https://cdimage.debian.org/images/cloud/bookworm/latest/SHA512SUMS"
+    image_name: "debian-12-generic-amd64.qcow2"
+    image_dest: "/var/lib/vz/template/cache/{{ image_name }}"
+    image_url: "https://cdimage.debian.org/images/cloud/bookworm/latest/{{ image_name }}"
+    template_storage: "local-zfs"
+    template_cloud_init_storage: "local-zfs"
+    template_name: "debian-12-cloud-init-template"
+    public_key: ""
+    template_id: 999
+    overwrite_existing_template: false
+  tasks:
+    ####################################
+    # Pre-Tasks: Handle VMID Conflicts #
+    ####################################
+
+    - name: Check if VMID {{ template_id }} already exists
+      ansible.builtin.shell: |
+        qm status {{ template_id }}
+      register: vmid_check
+      ignore_errors: true
+
+    - name: Set fact if VMID exists
+      ansible.builtin.set_fact:
+        vm_exists: "{{ vmid_check.rc == 0 }}"
+
+    - name: Fail if VMID is already in use and overwrite flag is false
+      ansible.builtin.fail:
+        msg: "VMID {{ template_id }} is already in use and overwrite_existing_template is set to false."
+      when:
+        - vm_exists
+        - not overwrite_existing_template
+
+    - name: Delete existing VM/template if VMID is already in use and overwrite flag is true
+      ansible.builtin.command:
+        cmd: qm destroy {{ template_id }} -purge -destroy-unreferenced-disks 1
+      when:
+        - vm_exists
+        - overwrite_existing_template
+      register: delete_existing_vm
+      ignore_errors: true
+
+    - name: Verify deletion of existing VM/template
+      ansible.builtin.shell: |
+        qm status {{ template_id }}
+      register: vmid_post_delete
+      when:
+        - vm_exists
+        - overwrite_existing_template
+      ignore_errors: true
+
+    - name: Fail if existing VM/template was not deleted
+      ansible.builtin.fail:
+        msg: "Failed to delete existing VM/template with VMID {{ template_id }}."
+      when:
+        - vm_exists
+        - overwrite_existing_template
+        - vmid_post_delete.rc == 0
+
+    ##################################
+    # Download and File Verification #
+    ##################################
+
+    - name: Create required directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0644"
+      loop:
+        - /var/lib/vz/template/cache/checksums
+
+    - name: Download Debian SHA512 checksums
+      ansible.builtin.get_url:
+        url: "{{ checksum_url }}"
+        dest: "{{ checksum_dest }}"
+        mode: "0644"
+        validate_certs: true
+
+    - name: Extract the specific image SHA512 checksum
+      ansible.builtin.shell: "grep {{ image_name }} {{ checksum_dest }} | awk '{print $1}'"
+      register: extracted_checksum
+      changed_when: false
+
+    - name: Ensure checksum was extracted
+      ansible.builtin.fail:
+        msg: "Failed to extract SHA512 checksum for the Debian image."
+      when: extracted_checksum.stdout == ""
+
+    - name: Download Debian Generic Cloud AMD64 Image with checksum verification
+      ansible.builtin.get_url:
+        url: "{{ image_url }}"
+        dest: "{{ image_dest }}"
+        checksum: "sha512:{{ extracted_checksum.stdout }}"
+        mode: "0644"
+        validate_certs: true
+
+    - name: Ensure the image was downloaded and verified
+      ansible.builtin.stat:
+        path: "{{ image_dest }}"
+      register: image_stat
+
+    - name: Fail if image download failed verification
+      ansible.builtin.fail:
+        msg: "The Debian image was not downloaded correctly or checksum verification failed."
+      when: not image_stat.stat.exists
+
+    ################
+    # Modify Image #
+    ################
+
+    - name: Install libguestfs-tools
+      ansible.builtin.apt:
+        name: libguestfs-tools
+        state: present
+        update_cache: true
+
+    - name: Install additional packages into the qcow2 image
+      ansible.builtin.command:
+        cmd: virt-customize -a {{ image_dest }} --install qemu-guest-agent,net-tools
+      register: virt_customize_result
+      ignore_errors: false
+
+    - name: Fail if virt-customize failed
+      ansible.builtin.fail:
+        msg: "Failed to install additional packages into the qcow2 image. Error: {{ virt_customize_result.stderr }}"
+      when: virt_customize_result.rc != 0
+
+    ###############
+    # VM Creation #
+    ###############
+
+    - name: Create Proxmox VM with Cloud-Init and Additional Packages
+      block:
+        - name: Create minimal VM using qm
+          ansible.builtin.shell: |
+            qm create {{ template_id }} \
+            --name {{ template_name }} \
+            --memory 2048 \
+            --net0 virtio,bridge=vmbr0 \
+            --scsihw virtio-scsi-pci \
+            --ide2 {{ template_cloud_init_storage }}:cloudinit \
+            --agent 1 \
+            --ciuser ansible \
+            --sshkey <(echo "{{ public_key }}") \
+            --nameserver "192.168.25.100 192.168.25.101" \
+            --ipconfig0 ip=dhcp
+          args:
+            executable: /bin/bash
+          register: qm_create_result
+          ignore_errors: false
+
+        - name: Import qcoqw2 image to Disk
+          ansible.builtin.shell: |
+            qm importdisk {{ template_id }} {{ image_dest }} {{ template_storage }}
+          args:
+            executable: /bin/bash
+          register: qm_importdisk_result
+          ignore_errors: false
+
+        - name: Attach disk to VM and set boot order
+          ansible.builtin.shell: |
+            qm set {{ template_id }} --scsi0 {{ template_storage }}:vm-{{ template_id }}-disk-0 --boot c --bootdisk scsi0
+          args:
+            executable: /bin/bash
+          register: qm_attach_image_result
+          ignore_errors: false
+
+        - name: Convert VM to template
+          ansible.builtin.shell: |
+            qm template {{ template_id }}
+          args:
+            executable: /bin/bash
+          register: qm_template_result
+          ignore_errors: false
+
+        - name: Remove the QCOW2 image after template creation
+          ansible.builtin.file:
+            path: "{{ image_dest }}"
+            state: absent
+          when: qm_template_result.rc == 0
+
+      rescue:
+        - name: Cleanup - Delete VM if any step in the block fails
+          ansible.builtin.command:
+            cmd: qm destroy {{ template_id }} -purge -destroy-unreferenced-disks 1
+          ignore_errors: true
+
+        - name: Cleanup - Remove partially created QCOW2 image if exists
+          ansible.builtin.file:
+            path: "{{ image_dest }}"
+            state: absent
+          ignore_errors: true
+
+        - name: Fail the playbook after cleanup
+          ansible.builtin.fail:
+            msg: "An error occurred during VM creation. Cleanup has been performed."
