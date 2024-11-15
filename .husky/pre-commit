@@ -1,17 +1,3 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
-DIR="debian-12"
-
-# Check for staged changes in the specific directory
-if git diff --cached --name-only | grep --quiet "^$DIR/"
-then
-  echo -e "\nChanges in $DIR detected..."
-
-  echo -e "\nansible-lint in $DIR..."
-  (cd $DIR && ansible-lint)
-  
-
-else
-  echo "No changes in $DIR, skipping Go Pre Commit Script."
-fi
-
+bash .husky/pre-commit.sh
