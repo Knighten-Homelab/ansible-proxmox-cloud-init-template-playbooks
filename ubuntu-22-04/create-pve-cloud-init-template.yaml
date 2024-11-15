@@ -179,7 +179,7 @@
 
     - name: Install additional packages into the image
       ansible.builtin.command:
-        cmd: virt-customize -a {{ image_dest }} --install qemu-guest-agent,net-tools
+        cmd: virt-customize -a {{ image_dest }} --install qemu-guest-agent,net-tools,htop
       register: virt_customize_result
       ignore_errors: false
 
