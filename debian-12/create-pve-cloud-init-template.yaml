@@ -149,7 +149,7 @@
             --ciuser ansible \
             --sshkey <(echo "{{ public_key }}") \
             --nameserver "192.168.25.100 192.168.25.101" \
-            --ipconfig0 ip=dhcp
+            --ipconfig0 ip=dhcp \
             --serial0 socket
 
           args:
