@@ -1,3 +1,9 @@
+## [1.1.1](https://github.com/Johnny-Knighten/ansible-homelab-proxmox-cloud-init-templates-playbooks/compare/1.1.0...1.1.1) (2024-11-15)
+
+### Bug Fixes
+
+* added serial dev to debian-12 template to allow disk resize ([991eb6e](https://github.com/Johnny-Knighten/ansible-homelab-proxmox-cloud-init-templates-playbooks/commit/991eb6e2947b4f41fe2e1c3aa73cc9ec34da41e4))
+
 ## [1.1.0](https://github.com/Johnny-Knighten/ansible-homelab-proxmox-cloud-init-templates-playbooks/compare/1.0.0...1.1.0) (2024-11-15)
 
 ### Features
