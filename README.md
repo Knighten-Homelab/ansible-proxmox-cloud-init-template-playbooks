@@ -4,3 +4,4 @@ Ansible playbooks that generate cloud-init templates for Proxmox VMs. These are 
 
 ## Cloud-Init Templates
 * [Debian 12 (Bookworm)](debian-12)
+* [Ubuntu Server 22.04 LTS (Jammy Jellyfish)](ubuntu-22-04)
