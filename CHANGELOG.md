@@ -1,3 +1,9 @@
+## [1.1.2](https://github.com/Johnny-Knighten/ansible-homelab-proxmox-cloud-init-templates-playbooks/compare/1.1.1...1.1.2) (2024-11-15)
+
+### Bug Fixes
+
+* correct missing \ before socket addition ([b151a83](https://github.com/Johnny-Knighten/ansible-homelab-proxmox-cloud-init-templates-playbooks/commit/b151a83d083a2e8a8cce1eed9c11fee03f9da6fd))
+
 ## [1.1.1](https://github.com/Johnny-Knighten/ansible-homelab-proxmox-cloud-init-templates-playbooks/compare/1.1.0...1.1.1) (2024-11-15)
 
 ### Bug Fixes
