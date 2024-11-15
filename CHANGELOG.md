@@ -1,3 +1,9 @@
+## [1.2.0](https://github.com/Johnny-Knighten/ansible-homelab-proxmox-cloud-init-templates-playbooks/compare/1.1.2...1.2.0) (2024-11-15)
+
+### Features
+
+* added htop to debian and ubuntu image customization step ([38a5b0c](https://github.com/Johnny-Knighten/ansible-homelab-proxmox-cloud-init-templates-playbooks/commit/38a5b0c0d594c5bee048909d5eff482e283e6818))
+
 ## [1.1.2](https://github.com/Johnny-Knighten/ansible-homelab-proxmox-cloud-init-templates-playbooks/compare/1.1.1...1.1.2) (2024-11-15)
 
 ### Bug Fixes
