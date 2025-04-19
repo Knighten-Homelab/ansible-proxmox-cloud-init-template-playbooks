@@ -4,7 +4,6 @@
     "url": "https://github.com/Johnny-Knighten/ansible-homelab-proxmox-cloud-init-templates-playbooks"
   },
   "devDependencies": {
-    "husky": "^9.1.6",
     "@commitlint/cli": "^19.4.1",
     "@commitlint/config-conventional": "^19.4.1",
     "@semantic-release/changelog": "6.0.3",
@@ -15,7 +14,6 @@
     "semantic-release": "1f22.0.5"
   },
   "scripts": {
-    "prepare": "husky",
     "pre-commit-gha": ""
   }
 }
