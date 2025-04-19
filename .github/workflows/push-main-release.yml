@@ -20,4 +20,6 @@
         contents: write
         issues: write
         pull-requests: write
+      with:
+        runs-on: ubuntu-latest
     
