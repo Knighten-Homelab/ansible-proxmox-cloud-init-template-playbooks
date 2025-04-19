@@ -1,5 +1,5 @@
 ---
-- name: Create Ubuntu Cloud-Init Template on Proxmox VE (Defaults to Ubuntu 22.04 Cloud Image AMD64)
+- name: Create Ubuntu Cloud-Init Template on Proxmox VE (Defaults to Ubuntu 22.04 Cloud Image AMD64) 
   hosts: "{{ host_group_var }}"
   become: true
   vars:
