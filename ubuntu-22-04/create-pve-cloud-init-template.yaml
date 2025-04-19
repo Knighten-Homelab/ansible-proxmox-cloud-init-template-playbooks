@@ -22,10 +22,11 @@
     # Pre-Tasks: Handle VMID Conflicts #
     ####################################
 
-    - name: Check if VMID {{ template_id }} already exists
+    - name: Check if VMID already exists (ID - {{ template_id }})
       ansible.builtin.shell: |
         qm status {{ template_id }}
       register: vmid_check
+      changed_when: false
       ignore_errors: true
 
     - name: Set fact if VMID exists
@@ -46,6 +47,7 @@
         - vm_exists
         - overwrite_existing_template
       register: delete_existing_vm
+      changed_when: delete_existing_vm.rc == 0
       ignore_errors: true
 
     - name: Verify deletion of existing VM/template
@@ -55,6 +57,7 @@
       when:
         - vm_exists
         - overwrite_existing_template
+      changed_when: false
       ignore_errors: true
 
     - name: Fail if existing VM/template was not deleted
@@ -97,13 +100,14 @@
         chdir: "/var/lib/vz/template/cache/checksums"
       register: gpg_verify_initial
       ignore_errors: true
+      changed_when: gpg_verify_initial.rc == 0
 
     - name: Extract missing GPG key IDs from verification output
-      set_fact:
+      ansible.builtin.set_fact:
         missing_gpg_keys: "{{ gpg_verify_initial.stderr | regex_findall('using [A-Z]+ key ([A-Fa-f0-9]+)') | unique }}"
 
     - name: Debug missing GPG keys
-      debug:
+      ansible.builtin.debug:
         msg: "Missing GPG Key IDs: {{ missing_gpg_keys }}"
       when: missing_gpg_keys | length > 0
 
@@ -120,6 +124,7 @@
       loop: "{{ missing_gpg_keys }}"
       when: missing_gpg_keys | length > 0
       register: gpg_import_results
+      changed_when: gpg_import_results.rc == 0
       ignore_errors: true
 
     - name: Fail if any GPG key import failed
@@ -132,6 +137,7 @@
         cmd: gpg --verify SHA256SUMS.gpg SHA256SUMS
         chdir: "/var/lib/vz/template/cache/checksums"
       register: gpg_verify_final
+      changed_when: gpg_verify_final.rc == 0
       ignore_errors: true
 
     - name: Fail if GPG signature verification failed after importing keys
@@ -140,7 +146,7 @@
       when: gpg_verify_final.rc != 0
 
     - name: Extract the specific image SHA256 checksum
-      ansible.builtin.shell: "grep {{ image_name }} {{ checksum_dest }} | awk '{print $1}'"
+      ansible.builtin.shell: "set -o pipefail && grep {{ image_name }} {{ checksum_dest }} | awk '{print $1}'"
       register: extracted_checksum
       changed_when: false
 
@@ -181,6 +187,7 @@
       ansible.builtin.command:
         cmd: virt-customize -a {{ image_dest }} --install qemu-guest-agent,net-tools,htop
       register: virt_customize_result
+      changed_when: virt_customize_result.rc == 0
       ignore_errors: false
 
     - name: Fail if virt-customize failed
@@ -210,6 +217,7 @@
           args:
             executable: /bin/bash
           register: qm_create_result
+          changed_when: qm_create_result.rc == 0
           ignore_errors: false
 
         - name: Import image to Disk
@@ -218,6 +226,7 @@
           args:
             executable: /bin/bash
           register: qm_importdisk_result
+          changed_when: qm_importdisk_result.rc == 0
           ignore_errors: false
 
         - name: Attach disk to VM and set boot order
@@ -226,6 +235,7 @@
           args:
             executable: /bin/bash
           register: qm_attach_image_result
+          changed_when: qm_attach_image_result.rc == 0
           ignore_errors: false
 
         - name: Convert VM to template
@@ -234,6 +244,7 @@
           args:
             executable: /bin/bash
           register: qm_template_result
+          changed_when: qm_template_result.rc == 0
           ignore_errors: false
 
         - name: Remove the image after template creation
@@ -247,12 +258,16 @@
           ansible.builtin.command:
             cmd: qm destroy {{ template_id }} -purge -destroy-unreferenced-disks 1
           ignore_errors: true
+          register: cleanup_result
+          changed_when: cleanup_result.rc == 0
 
         - name: Cleanup - Remove partially created image if exists
           ansible.builtin.file:
             path: "{{ image_dest }}"
             state: absent
           ignore_errors: true
+          register: cleanup_image_result
+          changed_when: cleanup_image_result.rc == 0
 
         - name: Fail the playbook after cleanup
           ansible.builtin.fail:

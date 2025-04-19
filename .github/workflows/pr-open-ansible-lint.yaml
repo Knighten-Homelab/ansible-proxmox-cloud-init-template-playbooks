@@ -1,0 +1,28 @@
+---
+name: PR Opened - Lint - Ansible
+run-name: Ansible Change Detected In PR ${{ github.event.number }} on ${{ github.head_ref }} - Lint
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+    paths:
+      - debian-12/**
+      - ubuntu-22-04/**
+
+jobs:
+  lint-debian-12:
+    name: Ansible Lint - Debian 12 (Bookworm)
+    uses: Knighten-Homelab/gha-reusable-workflows/.github/workflows/ansible-lint.yaml@main
+    with:
+      ansible-directory: debian-12
+      runs-on: ubuntu-latest
+
+  lint-ubuntu-22-04:
+    name: Ansible Lint - Ubuntu (Jammy Jellyfish)
+    uses: Knighten-Homelab/gha-reusable-workflows/.github/workflows/ansible-lint.yaml@main
+    with:
+      ansible-directory: ubuntu-22-04
+      runs-on: ubuntu-latest
