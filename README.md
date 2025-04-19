@@ -1,7 +1,28 @@
-# Homelab - Ansible Proxmox Cloud-Init Templates Playbooks
+# Ansible Proxmox Cloud-Init Templates Playbooks
 
-Ansible playbooks that generate cloud-init templates for Proxmox VMs. These are intended to be ran on the Proxmox host itself. For my use case, I manually launch these playbooks as needed from AWX.
+A collection of Ansible playbooks to createProxmox Cloud-Init templates for various Linux distributions. These playbooks run *on* your Proxmox host; so either run them directly on the host or use Ansible to SSH into the host.
 
-## Cloud-Init Templates
-* [Debian 12 (Bookworm)](debian-12)
-* [Ubuntu Server 22.04 LTS (Jammy Jellyfish)](ubuntu-22-04)
+## Features
+- **Checksum‑verified**: automatically fetches SHA512SUMS  
+- **Package injection**: adds `qemu-guest-agent`, `net-tools`, `htop`, etc.  
+- **Safe overwrite**: can destroy & recreate templates on demand  
+- **Multi‑distro**: Debian & Ubuntu examples provided  
+
+## Cloud‑Init Templates
+
+| Distro                                 | Playbook Path   |
+|----------------------------------------|-----------------|
+| Debian 12 “Bookworm”                   | `debian-12/`    |
+| Ubuntu 22.04 LTS “Jammy Jellyfish”     | `ubuntu-22-04/` |
+
+## Example Usage
+
+```bash
+ansible-playbook \
+  -i inventories/hosts.ini \
+  create-pve-cloud-init-template.yml \
+  -e host_group_var=proxmox-nodes \
+  -e template_id=999 \
+  -e public_key="$(< ~/.ssh/id_rsa.pub)" \
+  -e overwrite_existing_template=true
+```
