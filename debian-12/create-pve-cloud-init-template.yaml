@@ -20,10 +20,11 @@
     # Pre-Tasks: Handle VMID Conflicts #
     ####################################
 
-    - name: Check if VMID {{ template_id }} already exists
+    - name: Check if VMID already exists (ID - {{ template_id }})
       ansible.builtin.shell: |
         qm status {{ template_id }}
       register: vmid_check
+      changed_when: false
       ignore_errors: true
 
     - name: Set fact if VMID exists
@@ -44,6 +45,7 @@
         - vm_exists
         - overwrite_existing_template
       register: delete_existing_vm
+      changed_when: delete_existing_vm.rc == 0
       ignore_errors: true
 
     - name: Verify deletion of existing VM/template
@@ -53,6 +55,7 @@
       when:
         - vm_exists
         - overwrite_existing_template
+      changed_when: false
       ignore_errors: true
 
     - name: Fail if existing VM/template was not deleted
@@ -83,7 +86,7 @@
         validate_certs: true
 
     - name: Extract the specific image SHA512 checksum
-      ansible.builtin.shell: "grep {{ image_name }} {{ checksum_dest }} | awk '{print $1}'"
+      ansible.builtin.shell: "set -o pipefail && grep {{ image_name }} {{ checksum_dest }} | awk '{print $1}'"
       register: extracted_checksum
       changed_when: false
 
@@ -124,6 +127,7 @@
       ansible.builtin.command:
         cmd: virt-customize -a {{ image_dest }} --install qemu-guest-agent,net-tools,htop
       register: virt_customize_result
+      changed_when: virt_customize_result.rc == 0
       ignore_errors: false
 
     - name: Fail if virt-customize failed
@@ -151,10 +155,10 @@
             --nameserver "192.168.25.100 192.168.25.101" \
             --ipconfig0 ip=dhcp \
             --serial0 socket
-
           args:
             executable: /bin/bash
           register: qm_create_result
+          changed_when: qm_create_result.rc == 0
           ignore_errors: false
 
         - name: Import qcoqw2 image to Disk
@@ -163,6 +167,7 @@
           args:
             executable: /bin/bash
           register: qm_importdisk_result
+          changed_when: qm_importdisk_result.rc == 0
           ignore_errors: false
 
         - name: Attach disk to VM and set boot order
@@ -171,6 +176,7 @@
           args:
             executable: /bin/bash
           register: qm_attach_image_result
+          changed_when: qm_attach_image_result.rc == 0
           ignore_errors: false
 
         - name: Convert VM to template
@@ -179,6 +185,7 @@
           args:
             executable: /bin/bash
           register: qm_template_result
+          changed_when: qm_template_result.rc == 0
           ignore_errors: false
 
         - name: Remove the QCOW2 image after template creation
@@ -192,12 +199,16 @@
           ansible.builtin.command:
             cmd: qm destroy {{ template_id }} -purge -destroy-unreferenced-disks 1
           ignore_errors: true
+          register: cleanup_result
+          changed_when: cleanup_result.rc == 0
 
         - name: Cleanup - Remove partially created QCOW2 image if exists
           ansible.builtin.file:
             path: "{{ image_dest }}"
             state: absent
           ignore_errors: true
+          register: cleanup_image_result
+          changed_when: cleanup_image_result.rc == 0
 
         - name: Fail the playbook after cleanup
           ansible.builtin.fail:
