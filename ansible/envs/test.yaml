@@ -6,3 +6,4 @@ job_template_credentials:
   - Ansible Service Account - SSH Keys
 template_id: 120
 overwrite_existing_template: true
+template_name: "debian-12-cloud-init-template-TEST"
