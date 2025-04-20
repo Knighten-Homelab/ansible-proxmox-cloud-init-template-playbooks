@@ -1,0 +1,20 @@
+---
+  name: PR Opened - Lint - Ansible
+  run-name: Ansible Change Detected In PR ${{ github.event.number }} on ${{ github.head_ref }} - Lint
+  
+  on:
+    pull_request:
+      types:
+        - opened
+        - reopened
+        - synchronize
+  
+  jobs:
+    lint-debian-12:
+      name: Create AWX Resources
+      uses: Knighten-Homelab/gha-reusable-workflows/.github/workflows/awx-resource-playbook-execution.yaml@main
+      with:
+        ansible-directory: ansible
+        environment: test
+        runs-on: ubuntu-latest
+        awx-resource-playbook: create-awx-resources.yaml
