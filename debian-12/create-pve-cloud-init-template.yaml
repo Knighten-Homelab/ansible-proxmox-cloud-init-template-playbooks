@@ -87,6 +87,8 @@
 
     - name: Extract the specific image SHA512 checksum
       ansible.builtin.shell: "set -o pipefail && grep {{ image_name }} {{ checksum_dest }} | awk '{print $1}'"
+       args:
+        executable: /bin/bash
       register: extracted_checksum
       changed_when: false
 
