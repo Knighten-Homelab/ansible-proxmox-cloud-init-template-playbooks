@@ -1,6 +1,6 @@
 ---
-  name: PR Opened - Lint - Ansible
-  run-name: Ansible Change Detected In PR ${{ github.event.number }} on ${{ github.head_ref }} - Lint
+  name: PR Opened - Create AWX Resources
+  run-name: Create AWX Resources For ${{ github.event.number }} on ${{ github.head_ref }}
   
   on:
     pull_request:
@@ -16,7 +16,6 @@
       with:
         ansible-directory: ansible
         environment: test
-        runs-on: ubuntu-latest
         awx-resource-playbook: create-awx-resources.yaml
       secrets:
         VAULT_URL: ${{secrets.VAULT_URL_TEST}}
