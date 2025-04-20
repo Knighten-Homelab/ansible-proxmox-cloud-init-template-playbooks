@@ -3,7 +3,7 @@ awx_target_inv: "Homelab"
 awx_git_credential: "Github - AWX SSH Key"
 awx_project_branch: "main"
 job_template_credentials:
-  - Ansible Service Account - Homelab
+  - Ansible Service Account - Homelab (Root)
   - Ansible Service Account - SSH Keys
 template_id: 100
 overwrite_existing_template: true
