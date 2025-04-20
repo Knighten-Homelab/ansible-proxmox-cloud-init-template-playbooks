@@ -1,0 +1,7 @@
+awx_target_org: "Homelab"
+awx_target_inv: "Homelab"
+awx_git_credential: "Github - AWX SSH Key"
+job_template_credentials:
+  - Ansible Service Account - Homelab
+  - Proxmox Primary
+  - Proxmox NAS
