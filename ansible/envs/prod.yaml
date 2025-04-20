@@ -5,3 +5,5 @@ awx_project_branch: "main"
 job_template_credentials:
   - Ansible Service Account - Homelab
   - Ansible Service Account - SSH Keys
+template_id: 100
+overwrite_existing_template: true

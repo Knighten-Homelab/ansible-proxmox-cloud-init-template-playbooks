@@ -4,3 +4,5 @@ awx_git_credential: "Github - AWX SSH Key"
 job_template_credentials:
   - Ansible Service Account - Homelab
   - Ansible Service Account - SSH Keys
+template_id: 120
+overwrite_existing_template: true
