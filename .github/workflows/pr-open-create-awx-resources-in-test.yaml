@@ -10,7 +10,7 @@
         - synchronize
   
   jobs:
-    lint-debian-12:
+    create-awx-resources:
       name: Create AWX Resources
       uses: Knighten-Homelab/gha-reusable-workflows/.github/workflows/awx-resource-playbook-execution.yaml@main
       with:
