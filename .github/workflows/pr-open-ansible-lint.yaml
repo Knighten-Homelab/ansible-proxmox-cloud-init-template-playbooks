@@ -13,6 +13,9 @@ on:
       - ubuntu-22-04/**
       - ansible/**
 
+permissions:
+  contents: read
+
 jobs:
   lint-debian-12:
     name: Ansible Lint - Debian 12 (Bookworm)
