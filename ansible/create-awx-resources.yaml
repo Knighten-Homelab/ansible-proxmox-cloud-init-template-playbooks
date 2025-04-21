@@ -1,5 +1,5 @@
 ---
-- name: Create AWX Resources For Cloudflare DDNS Deployment
+- name: Create AWX Resources For PVE CloudInit Templates
   hosts: localhost
   gather_facts: false
 
@@ -60,13 +60,25 @@
         scm_update_on_launch: true
         scm_credential: "{{ awx_git_credential }}"
 
-    - name: Create deploy job template
+    - name: Create deploy job template for debian 12
       awx.awx.job_template:
         name: Debian 12 (Bookworm) Cloud-Init Template - Create
         job_type: run
         inventory: "{{ awx_target_inv }}"
         project: Homelab - PVE CloudInit Templates
         playbook: debian-12/create-pve-cloud-init-template.yaml
+        become_enabled: true
+        credentials: "{{ job_template_credentials }}"
+        extra_vars:
+          host_group_var: "proxmox-hosts"
+
+    - name: Create deploy job template for ubuntu 22.04
+      awx.awx.job_template:
+        name: Ubuntu 22.04 (Jammy Jellyfish) Cloud-Init Template - Create
+        job_type: run
+        inventory: "{{ awx_target_inv }}"
+        project: Homelab - PVE CloudInit Templates
+        playbook: ubuntu-22-04/create-pve-cloud-init-template.yaml
         become_enabled: true
         credentials: "{{ job_template_credentials }}"
         extra_vars:
