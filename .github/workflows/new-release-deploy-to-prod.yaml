@@ -1,0 +1,25 @@
+---
+name: New Release - Deploy To Prod
+run-name: Production Deployment for Push on ${{ github.ref_name }}
+
+on:
+  workflow_run:
+    workflows: ["Push To Main - Release"]
+    types:
+      - completed
+
+permissions:
+  contents: read
+
+jobs:
+  create-awx-resources:
+      name: Create AWX Resources
+      uses: Knighten-Homelab/gha-reusable-workflows/.github/workflows/awx-resource-playbook-execution.yaml@main
+      with:
+        ansible-directory: ansible
+        environment: prod
+        awx-resource-playbook: create-awx-resources.yaml
+        ref: main
+      secrets:
+        VAULT_URL: ${{secrets.VAULT_URL}}
+        VAULT_TOKEN: ${{secrets.VAULT_TOKEN}}
