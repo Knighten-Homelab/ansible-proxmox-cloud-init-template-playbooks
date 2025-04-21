@@ -1,0 +1,26 @@
+---
+name: PR Opened - Create AWX Resources
+run-name: Create AWX Resources For ${{ github.event.number }} on ${{ github.head_ref }}
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+permissions:
+  contents: read
+
+jobs:
+  create-awx-resources:
+    name: Create AWX Resources
+    uses: Knighten-Homelab/gha-reusable-workflows/.github/workflows/awx-resource-playbook-execution.yaml@main
+    with:
+      ansible-directory: ansible
+      environment: test
+      awx-resource-playbook: create-awx-resources.yaml
+      ref: ${{ github.head_ref }}
+    secrets:
+      VAULT_URL: ${{secrets.VAULT_URL_TEST}}
+      VAULT_TOKEN: ${{secrets.VAULT_TOKEN_TEST}}

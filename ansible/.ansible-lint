@@ -1,0 +1,10 @@
+---
+profile: production
+
+offline: true
+
+mock_modules:
+  - awx.awx.host
+  - awx.awx.group
+  - awx.awx.project
+  - awx.awx.job_template
