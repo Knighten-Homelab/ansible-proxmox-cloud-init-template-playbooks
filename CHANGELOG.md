@@ -1,3 +1,9 @@
+## [1.4.1](https://github.com/Knighten-Homelab/ansible-proxmox-cloud-init-template-playbooks/compare/1.4.0...1.4.1) (2025-04-21)
+
+### Bug Fixes
+
+* added missing ubuntu template to creation playbook ([#7](https://github.com/Knighten-Homelab/ansible-proxmox-cloud-init-template-playbooks/issues/7)) ([140c6b9](https://github.com/Knighten-Homelab/ansible-proxmox-cloud-init-template-playbooks/commit/140c6b93701e7e8752f22946e0fb9ca76538a759))
+
 ## [1.4.0](https://github.com/Knighten-Homelab/ansible-proxmox-cloud-init-template-playbooks/compare/1.3.0...1.4.0) (2025-04-21)
 
 ### Features
