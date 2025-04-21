@@ -1,3 +1,9 @@
+## [1.4.0](https://github.com/Knighten-Homelab/ansible-proxmox-cloud-init-template-playbooks/compare/1.3.0...1.4.0) (2025-04-21)
+
+### Features
+
+* awx resource creation gha ([#6](https://github.com/Knighten-Homelab/ansible-proxmox-cloud-init-template-playbooks/issues/6)) ([5f77ba7](https://github.com/Knighten-Homelab/ansible-proxmox-cloud-init-template-playbooks/commit/5f77ba7507975753fee514448f83a0f574a0c4d0))
+
 ## [1.3.0](https://github.com/Knighten-Homelab/ansible-proxmox-cloud-init-template-playbooks/compare/1.2.0...1.3.0) (2025-04-19)
 
 ### Features
